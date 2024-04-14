@@ -6,6 +6,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func ParseFile(filepath string) (Recipe, error) {
@@ -13,44 +14,44 @@ func ParseFile(filepath string) (Recipe, error) {
 
 	content, err := os.ReadFile(filepath)
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to read file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to read file: %v", err)
 	}
 
 	fileContent := strings.Split(string(content), "\n")
 
 	tags, fileContent, err := parseTags(fileContent)
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse tags of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse tags: %v", err)
 	}
 
 	preparationDuration, fileContent, err := parseDuration(fileContent, "Préparation")
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse preparation duration of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse preparation duration: %v", err)
 	}
 
 	restingDuration, fileContent, err := parseDuration(fileContent, "Repos")
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse resting duration of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse resting duration: %v", err)
 	}
 
 	cookingDuration, fileContent, err := parseDuration(fileContent, "Cuisson")
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse cooking duration of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse cooking duration: %v", err)
 	}
 
 	serving, fileContent, err := parseServing(fileContent)
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse serving of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse serving: %v", err)
 	}
 
 	ingredients, fileContent, err := parseIngredients(fileContent)
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse ingredients of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse ingredients: %v", err)
 	}
 
 	steps, err := parseSteps(fileContent)
 	if err != nil {
-		return Recipe{}, fmt.Errorf("failed to parse steps of file %q: %v", filepath, err)
+		return Recipe{}, fmt.Errorf("failed to parse steps: %v", err)
 	}
 
 	return Recipe{
@@ -78,17 +79,23 @@ func parseTags(lines []string) ([]string, []string, error) {
 	return tags, lines[1:], nil
 }
 
-func parseDuration(lines []string, durationKind string) (string, []string, error) {
+func parseDuration(lines []string, durationKind string) (time.Duration, []string, error) {
 	lines = skipUntil(lines, regexp.MustCompile(durationKind))
 
 	line := lines[0]
 
 	splittedLine := strings.Split(line, ":")
 	if len(splittedLine) != 2 {
-		return "", nil, fmt.Errorf("expected a key value for the duration but got %q", line)
+		return 0, nil, fmt.Errorf("expected a key value for the duration but got %q", line)
 	}
 
-	return strings.TrimSpace(splittedLine[1]), lines[1:], nil
+	rawDuration := strings.TrimSpace(splittedLine[1])
+	duration, err := time.ParseDuration(rawDuration)
+	if err != nil {
+		return 0, nil, fmt.Errorf("expected a valid duration but got %q", rawDuration)
+	}
+
+	return duration, lines[1:], nil
 }
 
 func parseServing(lines []string) (string, []string, error) {
@@ -99,7 +106,12 @@ func parseServing(lines []string) (string, []string, error) {
 	start := strings.Index(line, "(")
 	end := strings.Index(line, ")")
 
-	return line[start+1 : end], lines[1:], nil
+	var serving string
+	if start > 0 {
+		serving = line[start+1 : end]
+	}
+
+	return serving, lines[1:], nil
 }
 
 func parseIngredients(lines []string) ([]Ingredient, []string, error) {
@@ -113,7 +125,7 @@ func parseIngredients(lines []string) ([]Ingredient, []string, error) {
 
 		var title, quantity, additionalInformation string
 		matches := regexp.
-			MustCompile(`^-\s+\[\[(.*)\]\](\s*\|\s*([^|]+)(\s*\|\s*(.*))?)?`).
+			MustCompile(`^-\s+\[\[([^|]+)\]\](\s*\|\s*([^|]+)(\s*\|\s*(.*))?)?`).
 			FindStringSubmatch(lines[i])
 
 		if matches == nil {

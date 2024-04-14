@@ -2,6 +2,7 @@ package obsidian_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/kdisneur/obsidiantomela/obsidian"
 	"github.com/kdisneur/obsidiantomela/testutil/require"
@@ -16,9 +17,9 @@ func TestParseFileSuccess(t *testing.T) {
 			"difficulté-facile",
 			"coût-économique",
 		},
-		PreparationDuration: "15m0s",
-		RestingDuration:     "0s",
-		CookingDuration:     "20m0s",
+		PreparationDuration: 15 * time.Minute,
+		RestingDuration:     0,
+		CookingDuration:     20 * time.Minute,
 		Serving:             "6 personnes",
 		Ingredients: []obsidian.Ingredient{
 			{Title: "Oignon", Quantity: "1"},
@@ -64,6 +65,7 @@ func TestParseFileSuccess(t *testing.T) {
 	require.Equal(t, expectedRecipe.PreparationDuration, actualRecipe.PreparationDuration, "should have same preparation duration")
 	require.Equal(t, expectedRecipe.RestingDuration, actualRecipe.RestingDuration, "should have same resting duration")
 	require.Equal(t, expectedRecipe.CookingDuration, actualRecipe.CookingDuration, "should have same cooking duration")
+	require.Equal(t, 35*time.Minute, actualRecipe.TotalDuration(), "should have same total duration")
 	require.Equal(t, expectedRecipe.Serving, actualRecipe.Serving, "should have same serving duration")
 	require.DeepEqual(t, expectedRecipe.Ingredients, actualRecipe.Ingredients, "should have same ingredients")
 	require.DeepEqual(t, expectedRecipe.Steps, actualRecipe.Steps, "should have same steps")
